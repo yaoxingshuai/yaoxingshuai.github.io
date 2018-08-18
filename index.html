@@ -233,6 +233,184 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/08/18/consul-cluster-template-2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="ddyao">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="biu biu ~~~">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2018/08/18/consul-cluster-template-2/" itemprop="url">consul 2 集群版 & template模板操作</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-08-18T21:37:09+08:00">
+                2018-08-18
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+             <span id="/2018/08/18/consul-cluster-template-2/" class="leancloud_visitors" data-flag-title="consul 2 集群版 & template模板操作">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">Visitors&#58;</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h3 id="consul-集群版搭建"><a href="#consul-集群版搭建" class="headerlink" title="consul 集群版搭建"></a>consul 集群版搭建</h3><p>细节性的操作可以不说了，和单机版操作一样。</p>
+<h4 id="云服务的信息"><a href="#云服务的信息" class="headerlink" title="云服务的信息"></a>云服务的信息</h4><p>我买了3个腾讯云服务器，都下载了 consul 二进制文件。</p>
+<table>
+<thead>
+<tr>
+<th>cvm_number</th>
+<th>ip </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cvm1</td>
+<td>10.39.1.13 </td>
+</tr>
+<tr>
+<td>cvm2</td>
+<td>10.39.2.4 </td>
+</tr>
+<tr>
+<td>cvm3</td>
+<td>10.39.6.8 </td>
+</tr>
+</tbody>
+</table>
+<h4 id="开启-consul-server"><a href="#开启-consul-server" class="headerlink" title="开启 consul server"></a>开启 consul server</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cvm1 和 cvm2 开启 server 端</span><br><span class="line">$ consul agent -server -bootstrap-expect 3 -data-dir /root/consul_data_dir -node=n1 -datacenter sky_dc -client 0.0.0.0</span><br><span class="line">$ consul agent -server -bootstrap-expect 3 -data-dir /root/consul_data_dir -node=n2 -datacenter sky_dc -client 0.0.0.0</span><br></pre></td></tr></table></figure>
+<p>此时在 cvm1 上执行 <code>consul members</code> 还看不到 cvm2 的consul，因为还没有加入到这个集群来。 </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># root @ VM_1_13_centos in ~ [15:56:44]</span><br><span class="line">$ consul members</span><br><span class="line">Node   Address          Status  Type    Build  Protocol  DC      Segment</span><br><span class="line">n1_13  10.39.1.13:8301  alive   server  1.2.2  2         sky_dc  &lt;all&gt;</span><br></pre></td></tr></table></figure>
+<h4 id="手动把其它节点加进来"><a href="#手动把其它节点加进来" class="headerlink" title="手动把其它节点加进来"></a>手动把其它节点加进来</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># root @ VM_1_13_centos in ~ [15:56:49]</span><br><span class="line">$ consul join 10.39.2.4</span><br><span class="line">Successfully joined cluster by contacting 1 nodes.</span><br></pre></td></tr></table></figure>
+<p>在cvm1再次 <code>consul members</code> 会发现 cvm2 的consul已经加入</p>
+<p>如果要移除某个consul节点可以 <code>consul force-leave &quot;node_name&quot;</code>, 但是更好的操作是在该consul节点上主动离开 <code>consul leave</code></p>
+<h4 id="client-加入"><a href="#client-加入" class="headerlink" title="client 加入"></a>client 加入</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># root @ VM_6_8_centos in ~ [16:13:27]</span><br><span class="line">$ consul agent -data-dir /root/consul_agent_data_dir -node=n3 -join=10.39.1.13 -datacenter=sky_dc -ui-dir /tmp/ui -client=0.0.0.0 -ui</span><br></pre></td></tr></table></figure>
+<p>cvm3 的 consul 启动的时候 join 到 cvm1 的consul集群，  -ui 看个人需要，如果不加则没有自带的ui界面。   -client也很重要，默认只能localhost</p>
+<h3 id="consul-template-配置文件模板化"><a href="#consul-template-配置文件模板化" class="headerlink" title="consul template 配置文件模板化"></a>consul template 配置文件模板化</h3><p>consul 的 template 模板和 Django go-gin 等 web 框架的模板很像，语法也差不多。</p>
+<p>现在有这种情况， 我们的服务器部署有几十台，每一台的配置文件有相同的部分，也有各自不同的部分。 如果每次添加或修改功能，每个配置文件都要去手动修改几十个配置文件，还是很麻烦的。</p>
+<p>这个时候就可以把配置文件写出一个模板，各配置文件不同的部分设置为变量，可以从consul读取，然后生成各自具体的配置文件。</p>
+<h4 id="consul-template-安装"><a href="#consul-template-安装" class="headerlink" title="consul-template 安装"></a>consul-template 安装</h4><p>consul-template 和 consul 的安装和使用都差不多，下个二进制文件，然后直接就能用。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ wget https://releases.hashicorp.com/consul-template/0.18.3/consul-template_0.18.3_linux_amd64.zip</span><br><span class="line">$ unzip consul-template_0.18.3_linux_amd64.zip</span><br><span class="line">$ mv consul-template /usr/local/bin/</span><br></pre></td></tr></table></figure>
+<h4 id="先看看配置文件的模板"><a href="#先看看配置文件的模板" class="headerlink" title="先看看配置文件的模板"></a>先看看配置文件的模板</h4><ul>
+<li>key 表示去consul查询对应的key-value (注意，如果key不存在，会阻塞等待，直到consul添加了这个key)</li>
+<li>keyOrDefault 不会阻塞，如果没找到key，用默认值代替</li>
+<li>range tree byKey 等操作，可以自行百度，这个用起来还是有些细节问题要注意的</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"># root @ VM_6_8_centos in ~ [22:16:47]</span><br><span class="line">$ cat myInTemplate.txt</span><br><span class="line"># 这是我的配置文件模板</span><br><span class="line">&#123;&#123; key &quot;k1&quot; &#125;&#125;</span><br><span class="line">&#123;&#123; keyOrDefault &quot;noExists&quot; &quot;my_default_value1&quot; &#125;&#125;</span><br><span class="line">-------------------------</span><br><span class="line">&#123;&#123; range $key,$pairs := tree &quot;region&quot;|byKey &#125;&#125;</span><br><span class="line">  topDir==&#123;&#123;$key&#125;&#125;:</span><br><span class="line">  regionName==&#123;&#123;$pairs.name.Value&#125;&#125;</span><br><span class="line">  &#123;&#123; range $pair:=$pairs &#125;&#125; &#123;&#123;.Key&#125;&#125;--&gt;&#123;&#123;.Value&#125;&#125; &#123;&#123;end&#125;&#125;</span><br><span class="line">&#123;&#123;end&#125;&#125;</span><br></pre></td></tr></table></figure>
+<p>这是我已经在consul里面添加的 key-value</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">$ consul kv get k1</span><br><span class="line">v1</span><br><span class="line"></span><br><span class="line">$ consul kv get region/1/name</span><br><span class="line">ap-guangzhou</span><br><span class="line"></span><br><span class="line">$ consul kv get region/8/name</span><br><span class="line">ap-beijing</span><br></pre></td></tr></table></figure>
+<h4 id="生成配置文件"><a href="#生成配置文件" class="headerlink" title="生成配置文件"></a>生成配置文件</h4><p>使用模板生成配置文件  （根据 myInTemplate.txt 模板，去consul读取对应的变量，然后生成配置文件 myOut.conf）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ consul-template -consul-addr 10.39.6.8:8500 -template &quot;myInTemplate.txt:myOut.conf&quot; -once</span><br><span class="line">命令说明： </span><br><span class="line">-consul-addr:指定Consul的API接口 ，默认是8500端口。</span><br><span class="line">-template：模板参数，第一个参数是模板文件位置，第二个参数是结果输出位置。</span><br><span class="line">-once：只运行一次就退出。</span><br></pre></td></tr></table></figure>
+<p>看看自动产生的配置文件，当配置文件数量很多的时候，这个还是很方便的</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"># root @ VM_6_8_centos in ~ [22:22:08]</span><br><span class="line">$ cat myOut.conf</span><br><span class="line"># 这是我的配置文件模板</span><br><span class="line">v1</span><br><span class="line">my_default_value1</span><br><span class="line">-------------------------</span><br><span class="line"></span><br><span class="line">  topDir==1:</span><br><span class="line">  regionName==ap-guangzhou</span><br><span class="line">   db/dbUrl--&gt;http://qq.quangzhou.mock  name--&gt;ap-guangzhou</span><br><span class="line"></span><br><span class="line">  topDir==8:</span><br><span class="line">  regionName==ap-beijing</span><br><span class="line">   db/dbUrl--&gt;http://qq.beijing.mock  name--&gt;ap-beijing</span><br></pre></td></tr></table></figure>
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/08/18/consul-cluster-template/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -847,7 +1025,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-count">5</span>
                   <span class="site-state-item-name">posts</span>
                 </a>
               </div>
